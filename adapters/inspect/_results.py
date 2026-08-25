@@ -11,7 +11,11 @@ from _benchmarks import DIMENSION_ABILITY_MAP, PETRI_PRIMARY_METRIC
 
 logger = logging.getLogger(__name__)
 
-
+# 1. open the log file
+# 2. load the json data
+# 3. check if the status is not success or cancelled
+# 4. if the status is not success or cancelled, raise an error
+# 5. if the status is success or cancelled, return the data
 def parse_log(log_file: Path) -> dict[str, Any]:
     import json
     with open(log_file) as f:
