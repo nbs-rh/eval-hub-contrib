@@ -1,10 +1,15 @@
 """Exercise role connections through the SDK's real projected Secret reader."""
 
+import asyncio
 from pathlib import Path
 
-import pytest
 import evalhub.adapter.auth as auth
+import httpx
+import pytest
+import respx
 from evalhub.adapter import JobSpec
+
+from main import ATIFAdapter
 
 
 @pytest.fixture
@@ -19,12 +24,6 @@ def config():
     spec = JobSpec.model_validate_json(Path("meta/job.json").read_text())
     spec.model.url = "http://localhost:8080/target/v1"
     return spec
-
-
-import asyncio
-import httpx
-import respx
-from main import ATIFAdapter
 
 
 def test_atif_uses_judge_secret_and_ignores_proxy_env(model_secret, monkeypatch):

@@ -1850,7 +1850,9 @@ class ATIFAdapter(FrameworkAdapter):
         role_key = read_job_auth_key(job_spec, "judge_api-key")
         role_url = read_job_auth_key(job_spec, "judge_url")
         if role_url and not role_key:
-            raise ValueError("judge_url in model.auth.secret_ref requires judge_api-key")
+            raise ValueError(
+                "judge_url in model.auth.secret_ref requires judge_api-key"
+            )
         for parameter in ("judge_url", "judge_api_key"):
             if parameter in job_spec.parameters:
                 raise ValueError(
