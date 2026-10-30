@@ -125,6 +125,7 @@ The adapter reads `calibration_data_ref[].data_config` and `results_data_ref.dat
 |---|---|
 | `format` | `auto` (default), `json`, `jsonl`, `csv`, or `parquet`; `.ndjson` files are also recognized |
 | `path` | Relative file or directory within the downloaded artifact to read |
+| `records_path` | Results only: JSONPath to the record array inside JSON files; requires `json` or `auto` format |
 | `columns` | Maps canonical roles to source column names; dotted paths can access nested JSON fields |
 | `selection` | Constant benchmark/metric identity for a file that has no identity columns |
 | `value_mappings` | Explicit string-category-to-number maps for `prediction` or `label`; every present category must be declared |
@@ -145,6 +146,25 @@ The standalone Eval Hub API exposes result mappings alongside the result source:
 ```
 
 Omitting result `data_config` preserves automatic detection and canonical fields.
+
+For nested JSON results, select the record array before applying column mappings:
+
+```json
+{
+  "format": "json",
+  "path": "benchmarks.json",
+  "records_path": "$.benchmarks[0].requests.successful",
+  "columns": {"sample_id": "request_id", "prediction": "time_to_first_token_ms"}
+}
+```
+
+`records_path` starts with `$` (the document root), with dotted child names,
+bracketed array indices, and quoted keys such as `$['key.with.dots']`. It must
+select exactly one array of record objects; multiple matches are rejected. Missing
+paths and invalid targets fail explicitly. Use `path` to select a file when the
+artifact contains unrelated JSON files. Metadata-only `manifest.json` files are
+still read for `primary_score` and `estimand`. Calibration configuration is unchanged.
+
 Value mappings are generic: the runtime has no framework-specific score rules.
 Mappings apply after field lookup, including dotted JSON paths. Their outputs
 must be finite JSON numbers; unknown categories fail rather than defaulting to
