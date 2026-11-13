@@ -4,7 +4,14 @@ import numpy as np
 import pytest
 from scipy.stats import norm
 
-from post_processor.data import Table, extract_guidellm_records, ppi_arrays, read_table, within
+from post_processor.data import (
+    Table,
+    extract_guidellm_records,
+    matching,
+    ppi_arrays,
+    read_table,
+    within,
+)
 from post_processor.operations import interval
 
 
@@ -532,3 +539,42 @@ def test_guidellm_complete_report_uses_actual_total_not_sampling_option():
         ],
     }
     assert extract_guidellm_records(document, "guidellm") == rows
+
+
+@pytest.mark.parametrize(
+    "metadata", [{"benchmark_id": "ruler"}, {"benchmark_id": "ruler", "provider_id": "provider"}]
+)
+@pytest.mark.parametrize("calibration_metadata", [False, True])
+def test_external_native_metadata_preserves_calibration_join(metadata, calibration_metadata):
+    """External native rows retain scores even without a source-job identity."""
+    results = Table([{"sample_id": str(i), "prediction": float(i), **metadata} for i in range(4)])
+    calibration = Table(
+        [
+            {"sample_id": "0", "label": 1, **(metadata if calibration_metadata else {})},
+            {"sample_id": "1", "label": 0, **(metadata if calibration_metadata else {})},
+        ]
+    )
+    labels, predicted, unlabeled = ppi_arrays(
+        results, [calibration], {"metric": "score"}, shared=False
+    )
+    np.testing.assert_array_equal(labels, [1, 0])
+    np.testing.assert_array_equal(predicted, [0, 1])
+    np.testing.assert_array_equal(unlabeled, [2, 3])
+
+
+@pytest.mark.parametrize("role", ["benchmark_id", "provider_id", "metric"])
+def test_external_explicit_selection_filters_conflicting_rows(role):
+    """An explicit selector must match native metadata without an eval_job target."""
+    table = Table([], {"selection": {role: "chosen"}})
+    assert matching(table, {role: "chosen"}, {}, shared=False)
+    assert not matching(table, {role: "other"}, {}, shared=False)
+    # A selection also supplies metadata when a format omits that column.
+    assert matching(table, {}, {}, shared=False)
+
+
+@pytest.mark.parametrize("role", ["benchmark_id", "provider_id", "metric"])
+def test_eval_job_target_still_filters_other_benchmarks_and_metrics(role):
+    """Source-job targets remain authoritative for result and calibration isolation."""
+    table = Table([])
+    assert matching(table, {role: "chosen"}, {role: "chosen"}, shared=False)
+    assert not matching(table, {role: "other"}, {role: "chosen"}, shared=False)
